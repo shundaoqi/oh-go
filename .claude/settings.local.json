@@ -3,7 +3,9 @@
     "allow": [
       "Bash(mkdir:*)",
       "Bash(gh repo create:*)",
-      "Bash(gh auth:*)"
+      "Bash(gh auth:*)",
+      "Bash(git remote add:*)",
+      "Bash(git add:*)"
     ],
     "deny": []
   }
