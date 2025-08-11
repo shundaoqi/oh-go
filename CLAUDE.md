@@ -156,13 +156,30 @@ oh-go/
 features/[feature]/
 ├── index.ts                    # feature のエクスポート
 ├── api/                        # API呼び出しロジック
-├── model/                      # ビジネスロジック・型定義
+├── model/                      # ビジネスロジック・型定義・カスタムフック
 │   ├── [model-module].ts
 │   └── [model-module].test.ts
 ├── store/                      # 状態管理（Jotai atoms）
 └── ui/                         # UI コンポーネント
+    ├── organisms/              # ドメイン特化コンポーネント（ビジネスロジック連携）
     ├── [component-name].tsx
     └── [component-name].test.tsx
+```
+
+### 5.2 共通UI構成（Atomic Design）
+```
+shared/ui/
+├── atoms/                      # 最小単位、ロジック無し、完全ステートレス
+│   ├── Button/
+│   ├── Input/
+│   └── Label/
+├── molecules/                  # UI制御ロジック有り、システム全体で再利用可能
+│   ├── Dropdown/              # 開閉・検索などのUI制御
+│   ├── FormField/             # バリデーション表示・フォーカス制御
+│   └── Modal/                 # モーダル開閉制御
+└── organisms/                  # ビジネスロジック統合、ドメイン情報を持つ
+    ├── Header/
+    └── Layout/
 ```
 
 ## 6. 画面構成
@@ -282,24 +299,55 @@ const getUsageRecords = async (userId: string): Promise<UsageRecord[]> => {
 
 ## 10. 開発ガイドライン
 
-### 10.1 コーディング規約
+### 10.1 UIとロジックの分離（Atomic Design）
+
+#### 10.1.1 責務分担
+- **Atoms（共通UI）**: ロジック無し、propsのみ依存、完全ステートレス
+- **Molecules（共通UI）**: **UI制御ロジック**（開閉状態、フォーカス、検索、バリデーション表示など）
+- **Organisms（feature UI）**: **ビジネスロジック連携**（API呼び出し、業務制約、状態管理統合）
+- **Model層（feature）**: **ビジネスロジック**（データ変換、業務ルール、API処理）
+
+#### 10.1.2 実装パターン
+```typescript
+// ❌ 悪い例：UI制御ロジックがmodel層にある
+// model/use-form.ts - ここにUI制御ロジックを書かない
+const useForm = () => {
+  const [isDropdownOpen, setIsDropdownOpen] = useState(false) // NG
+  const [businessData, setBusinessData] = useState([])        // OK
+}
+
+// ✅ 良い例：適切な分離
+// shared/ui/molecules/Dropdown.tsx - UI制御ロジック
+const Dropdown = () => {
+  const [isOpen, setIsOpen] = useState(false)     // UI制御ロジック
+  const [searchTerm, setSearchTerm] = useState('') // UI制御ロジック
+}
+
+// features/usage/model/use-usage.ts - ビジネスロジック
+const useUsage = () => {
+  const validateBusinessRule = () => {...}        // ビジネスロジック
+  const fetchUsageData = () => {...}              // ビジネスロジック
+}
+```
+
+### 10.2 コーディング規約
 - **命名規則**: 
   - コンポーネント: PascalCase (`UserProfile`)
   - ファイル: kebab-case (`user-profile.tsx`)
   - 関数・変数: camelCase (`getUserProfile`)
 - **インポート順序**: 外部ライブラリ → 内部モジュール → 相対インポート
 
-### 10.2 エラーハンドリング
+### 10.3 エラーハンドリング
 - **ユーザー向けエラー**: 分かりやすいエラーメッセージを表示
 - **開発者向けログ**: console.errorで詳細なエラー情報をログ出力
 - **エラーバウンダリ**: React Error Boundaryで予期しないエラーをキャッチ
 
-### 10.3 テスト戦略
+### 10.4 テスト戦略
 - **単体テスト**: 各feature内でビジネスロジックをテスト
 - **コンポーネントテスト**: React Testing Libraryでユーザーインタラクションをテスト
 - **API テスト**: MSWでAPIモックを作成してテスト
 
-### 10.4 パフォーマンス考慮事項
+### 10.5 パフォーマンス考慮事項
 - **レンダリング最適化**: React.memoやuseMemoを適切に使用
 - **バンドルサイズ**: 不要なライブラリのインポートを避ける
 - **データベースクエリ**: N+1問題を避けるためのinclude/selectの適切な使用
