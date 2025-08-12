@@ -1,0 +1,15 @@
+node_modules
+.next
+out
+dist
+build
+coverage
+.env*
+*.log
+.DS_Store
+.vscode
+.idea
+*.tgz
+*.tar.gz
+public
+prisma/migrations

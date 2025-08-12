@@ -1,0 +1,85 @@
+// This is your Prisma schema file,
+// learn more about it in the docs: https://pris.ly/d/prisma-schema
+
+// Looking for ways to speed up your queries, or scale easily with your serverless or edge functions?
+// Try Prisma Accelerate: https://pris.ly/cli/accelerate-init
+
+generator client {
+  provider = "prisma-client-js"
+}
+
+datasource db {
+  provider = "postgresql"
+  url      = env("DATABASE_URL")
+}
+
+// 部署マスタ
+model Department {
+  id        String   @id @default(uuid()) @db.Uuid
+  name      String   // 例：ITプロダクト推進部
+  createdAt DateTime @default(now()) @map("created_at")
+  updatedAt DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  userProfiles UserProfile[]
+
+  @@map("departments")
+}
+
+// 自販機マスタ
+model VendingMachine {
+  id              String  @id @default(uuid()) @db.Uuid
+  name            String  // 例：浜松町10階
+  weeklyPairLimit Boolean @map("weekly_pair_limit") // 週1回制限の有無
+  createdAt       DateTime @default(now()) @map("created_at")
+  updatedAt       DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  usageRecords UsageRecord[]
+
+  @@map("vending_machines")
+}
+
+// ユーザープロフィール
+model UserProfile {
+  id           String  @id @default(uuid()) @db.Uuid
+  firstName    String  @map("first_name") // 名
+  lastName     String  @map("last_name") // 姓
+  nickname     String? // ニックネーム
+  departmentId String  @map("department_id") @db.Uuid
+  hireYear     Int     @map("hire_year") // 入社年度
+  isActive     Boolean @default(true) @map("is_active") // 退職者管理用
+  isAdmin      Boolean @default(false) @map("is_admin") // 管理者フラグ
+  createdAt    DateTime @default(now()) @map("created_at")
+  updatedAt    DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  department         Department    @relation(fields: [departmentId], references: [id])
+  inputUsageRecords  UsageRecord[] @relation("InputUser")
+  partnerUsageRecords UsageRecord[] @relation("PartnerUser")
+
+  @@map("user_profiles")
+}
+
+// 利用記録
+model UsageRecord {
+  id               String   @id @default(uuid()) @db.Uuid
+  inputUserId      String   @map("input_user_id") @db.Uuid // 入力者
+  partnerUserId    String   @map("partner_user_id") @db.Uuid // 相手
+  vendingMachineId String   @map("vending_machine_id") @db.Uuid
+  usedDate         DateTime @map("used_date") @db.Date // 利用日
+  status           String   @default("active") // 'active', 'cancelled'
+  createdAt        DateTime @default(now()) @map("created_at")
+  updatedAt        DateTime @updatedAt @map("updated_at")
+
+  // Relations
+  inputUser      UserProfile    @relation("InputUser", fields: [inputUserId], references: [id])
+  partnerUser    UserProfile    @relation("PartnerUser", fields: [partnerUserId], references: [id])
+  vendingMachine VendingMachine @relation(fields: [vendingMachineId], references: [id])
+
+  // Indexes for constraint checking
+  @@index([inputUserId, usedDate])
+  @@index([partnerUserId, usedDate])
+  @@index([usedDate])
+  @@map("usage_records")
+}
